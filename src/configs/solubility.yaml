@@ -1,0 +1,59 @@
+
+
+seed: 42
+base_dir: /home/a03-sgoel/FLaT
+
+
+lm:
+  pretrained_esm: facebook/esm2_t33_650M_UR50D
+
+
+model:
+  d_model: 1280 
+  num_heads: 2
+  dropout: 0.5
+  num_layers: 4
+
+optim:
+  type: adamw
+  lr: 3e-5
+  lr_end: 1e-5
+  weight_decay: 0.01
+  beta1: 0.9
+  beta2: 0.98
+  power: 1
+
+
+training:
+  mode: test  # train / test
+  n_layers: 4
+  max_steps: 10000
+  warmup_steps: 500
+  log_every_n_steps: 10
+  num_sanity_val_steps: 2
+  val_check_interval: 1000
+  enable_progress_bar: true
+  grad_clip_val: 1.0
+  devices: [0]  # list of GPU IDs from 0-7
+
+
+data:
+  batch_size: 32
+  max_seq_len: 1024
+  train: ${base_dir}/data/solubility/train.csv
+  test: ${base_dir}/data/solubility/test.csv
+  val: ${base_dir}/data/solubility/val.csv
+
+
+wandb:
+  project: flat_solubility
+  group: programmablebio
+  name: sol_deep-mlp_steps10k_lr3e-5_bsz32_heads2_drpt0.5_layers4_betas0.99-0.98
+  id: ${.name}_${seed}
+
+
+checkpointing:
+  save_every_n_steps: 250
+  save_dir: ${base_dir}/checkpoints/${wandb.name}
+  resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
+  best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt

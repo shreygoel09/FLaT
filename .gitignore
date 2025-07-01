@@ -1,0 +1,11 @@
+# .gitignore
+
+/checkpoints/
+/data/
+/results/
+/build/
+/src/scripts/
+/FLaT.egg-info/
+*.pth
+*.ckpt
+__pycache__/
