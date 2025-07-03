@@ -9,8 +9,8 @@ from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 
-from src.latent_transport.solubility.solubility_module import SolubilityClassifier
-from src.latent_transport.solubility.dataloader import SolubilityDataModule, get_datasets
+from src.latent_transport.solubility.energy.solubility_module import SolubilityClassifier
+from src.latent_transport.solubility.energy.dataloader import SolubilityDataModule, get_datasets
 
 
 config = OmegaConf.load("/home/a03-sgoel/FLaT/src/configs/solubility.yaml")

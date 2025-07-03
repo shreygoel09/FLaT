@@ -8,14 +8,11 @@ from transformers import AutoModel
 from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
 from torchmetrics import PearsonCorrCoef
 
-from src.utils.model_utils import _print, CosineWarmup
+from utils.model_utils import CosineWarmup, _print
 
 
-config = OmegaConf.load("/home/a03-sgoel/FLaT/src/configs/solubility.yaml")
-
-
-class SolubilityClassifier(pl.LightningModule):
-    def __init__(self, config):
+class TransportModule(pl.LightningModule):
+    def __init__(self, config, model):
         super().__init__()
         self.config = config
         self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
@@ -28,28 +25,7 @@ class SolubilityClassifier(pl.LightningModule):
         for p in self.esm_model.parameters():
             p.requires_grad = False
 
-        self.mlp = nn.Sequential(
-            nn.Linear(config.model.d_model, config.model.d_model),
-            nn.GELU(),
-            nn.Dropout(config.model.dropout),
-
-            nn.Linear(config.model.d_model, config.model.d_model // 2),
-            nn.GELU(),
-            nn.Dropout(config.model.dropout),
-
-            nn.Linear(config.model.d_model // 2, config.model.d_model // 4),
-            nn.GELU(),
-            nn.Dropout(config.model.dropout),
-
-            nn.Linear(config.model.d_model // 4, 1),
-        )
-
-        # self.mlp = nn.Sequential(
-        #     nn.Linear(config.model.d_model, config.model.d_model // 2),
-        #     nn.ReLU(),
-        #     nn.Dropout(config.model.dropout),
-        #     nn.Linear(config.model.d_model // 2, 1),
-        # )
+        self.model = model
 
     # -------# Classifier step #-------- #
     def forward(self, batch_or_tensor):
@@ -69,7 +45,7 @@ class SolubilityClassifier(pl.LightningModule):
         else:
             raise ValueError(f"Incorrect embedding dim of {embeddings.ndim} provided")
 
-        logits = self.mlp(pooled).squeeze(-1)
+        logits = self.model(pooled)
         return logits
 
     
@@ -139,6 +115,8 @@ class SolubilityClassifier(pl.LightningModule):
         """Helper method to handle loss calculation"""
         labels = batch['labels']
         preds = self.forward(batch)
+        _print(f'preds: {preds}')
+        _print(f'probs: {torch.sigmoid(preds)}')
         loss = self.loss_fn(preds, labels).mean()
         return loss, preds
 

@@ -2,10 +2,6 @@ import sys
 import numpy as np
 from torch.optim.lr_scheduler import _LRScheduler
 
-def _print(text):
-    print(text)
-    sys.stdout.flush()
-
 class CosineWarmup(_LRScheduler):
     def __init__(self, optimizer, warmup_steps, total_steps, eta_ratio=0.1, last_epoch=-1):
         self.warmup_steps = warmup_steps
@@ -22,3 +18,8 @@ class CosineWarmup(_LRScheduler):
         decayed_lr = (1 - self.eta_ratio) * cosine_decay + self.eta_ratio
 
         return [decayed_lr * base_lr for base_lr in self.base_lrs]
+
+
+def _print(text):
+    print(text)
+    sys.stdout.flush()
