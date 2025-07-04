@@ -1,52 +1,44 @@
 import torch
 import pandas as pd
 import lightning.pytorch as pl
-
-from transformers import AutoTokenizer
 from torch.utils.data import Dataset, DataLoader
 
-
 class CustomDataset(Dataset):
-    def __init__(self, config, data_path, has_labels):
+    def __init__(self, config, data_path, tokenizer):
         self.config = config
         self.data = pd.read_csv(data_path)
-        self.has_labels = has_labels
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.lm.pretrained_esm)
+        self.tokenizer = tokenizer
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         sequence = self.data.iloc[idx]["Sequence"]
+        label = self.data.iloc[idx]["Label"]
+
         tokens = self.tokenizer(
-            sequence.upper(),
+            sequence,
             return_tensors='pt',
             padding='max_length',
             truncation=True,
-            max_length=self.config.data.max_seq_len,
+            max_length=self.config.data.max_seq_len
         )
-        
+    
         item = {
             "input_ids": tokens['input_ids'].squeeze(0),
-            "attention_mask": tokens['attention_mask'].squeeze(0)
+            "attention_mask": tokens['attention_mask'].squeeze(0),
+            "labels": torch.tensor(label, dtype=torch.float32),
         }
-        
-        if self.has_labels:
-            item["labels"] = torch.tensor(self.data.iloc[idx]["Label"], dtype=torch.float32)
-        
+
         return item
 
 
 def collate_fn(batch):
-    input_ids = torch.stack([item['input_ids'] for item in batch])
-    masks = torch.stack([item['attention_mask'] for item in batch])
     batch_dict = {
-        'input_ids': input_ids,
-        'attention_mask': masks
+        'input_ids': torch.stack([item['input_ids'] for item in batch]),
+        'attention_mask': torch.stack([item['attention_mask'] for item in batch]),
+        'labels': torch.stack([item['labels'] for item in batch])
     }
-    if 'labels' in batch[0]:
-        labels = torch.stack([item['labels'] for item in batch])
-        batch_dict['labels'] = labels
     return batch_dict
 
 

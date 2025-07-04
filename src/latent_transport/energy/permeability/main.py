@@ -4,32 +4,31 @@ import os
 import wandb
 import lightning.pytorch as pl
 
-from importlib import import_module
 from omegaconf import OmegaConf
 from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 
-from src.latent_transport.pl_module import TransportModule
-from src.latent_transport.dataloader import CustomDataset, CustomDataModule
+from src.latent_transport.energy.models import PermeabiltyRegressor
+from src.latent_transport.energy.permeability.pl_module import TransportModule
+from src.latent_transport.energy.permeability.dataloader import CustomDataset, CustomDataModule
+from src.latent_transport.energy.permeability.tokenizer import SMILES_SPE_Tokenizer
+
+config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/perm.yaml")
 
 
-# -------- Setup -------- #
-mode = "energy"   # energy / score
-prop = "sol"      # sol / perm / protclip / image
-
-config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/{mode}/{prop}.yaml")
-#wandb.login(key=config.wandb.api_key)
-
+# -------- Model Loader -------- #
+energy_model = PermeabiltyRegressor(config)
+pl_module = TransportModule(config, energy_model)
+tokenizer = SMILES_SPE_Tokenizer(
+    "/home/a03-sgoel/FLaT/src/latent_transport/energy/permeability/new_vocab.txt",
+    "/home/a03-sgoel/FLaT/src/latent_transport/energy/permeability/new_splits.txt"
+)
 
 # -------- Datasets -------- #
-def has_labels(prop):
-    return prop in ["sol", "perm"]
-
-label_required = has_labels(prop)
-train_dataset = CustomDataset(config, config.data.train, has_labels=label_required)
-val_dataset = CustomDataset(config, config.data.val, has_labels=label_required)
-test_dataset = CustomDataset(config, config.data.test, has_labels=label_required)
+train_dataset = CustomDataset(config, config.data.train, tokenizer)
+val_dataset   = CustomDataset(config, config.data.val, tokenizer)
+test_dataset  = CustomDataset(config, config.data.test, tokenizer)
 
 data_module = CustomDataModule(
     config=config,
@@ -66,29 +65,6 @@ trainer = pl.Trainer(
     log_every_n_steps=config.training.log_every_n_steps,
     val_check_interval=config.training.val_check_interval
 )
-
-
-# -------- Model Loader -------- #
-model_registry = {
-    "energy": {
-        "sol": ("src.latent_transport.energy_models", "SolubilityClassifier"),
-        "perm": ("src.latent_transport.energy_models", "PermeabilityRegressor"),
-        "protclip": ("src.latent_transport.energy_models", "ProtCLIP"),
-        "image": ("src.latent_transport.energy_models", "Image")
-    },
-    "score": {
-        "sol": ("src.latent_transport.score_models", "SolubilityClassifier"),
-        "perm": ("src.latent_transport.score_models", "PermeabilityRegressor"),
-        "protclip": ("src.latent_transport.score_models", "ProtCLIP"),
-        "image": ("src.latent_transport.score_models", "Image")
-    }
-}
-
-module_path, class_name = model_registry[mode][prop]
-module = import_module(module_path)
-ModelClass = getattr(module, class_name)
-model = ModelClass(config)
-pl_module = TransportModule(config, model)
 
 
 # -------- Run -------- #

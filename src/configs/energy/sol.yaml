@@ -10,9 +10,6 @@ lm:
 
 model:
   d_model: 1280 
-  num_heads: 2
-  dropout: 0.5
-  num_layers: 4
 
 optim:
   type: adamw
@@ -27,11 +24,11 @@ optim:
 training:
   mode: train  # train / test
   n_layers: 4
-  max_steps: 20000
-  warmup_steps: 1000
+  max_steps: 30000
+  warmup_steps: 1500
   log_every_n_steps: 10
   num_sanity_val_steps: 2
-  val_check_interval: 1000
+  val_check_interval: 1500
   enable_progress_bar: true
   grad_clip_val: 1.0
   devices: [0]  # list of GPU IDs from 0-7
@@ -46,14 +43,14 @@ data:
 
 
 wandb:
-  project: flat_solubility
+  project: flat_solubility_v2
   group: programmablebio
-  name: sol_simple-mlp_steps20k_lr3e-5_bsz32_drpt0.5_betas0.99-0.98
+  name: sol_simple-mlp_steps30k_lr3e-5_bsz32_drpt0.5_betas0.99-0.98
   id: ${.name}_${seed}
 
 
 checkpointing:
   save_every_n_steps: 250
-  save_dir: ${base_dir}/checkpoints/${wandb.name}
+  save_dir: ${base_dir}/checkpoints/energy/${wandb.name}
   resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt
