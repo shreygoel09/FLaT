@@ -1,29 +1,29 @@
 import gc
 import torch
-import torch.nn.functional as F
+import torch.nn as nn
 import lightning.pytorch as pl
 
 from transformers import AutoModel
+from torchmetrics import SpearmanCorrCoef, MeanSquaredError, R2Score, PearsonCorrCoef
 
-from src.latent_transport.score.models import ScoreMatchingLoss, ScoreNormMetric
-from src.latent_transport.score.permeability.embed import embed_smiles
 from utils.model_utils import CosineWarmup, _print, mean_pool, freeze_model
 
 
 class TransportModule(pl.LightningModule):
-    def __init__(self, config, score_model):
+    def __init__(self, config, energy_model):
         super().__init__()
         self.config = config
-        self.sigma = self.config.optim.sigma
-        self.loss_fn = ScoreMatchingLoss(sigma=self.sigma)
+        self.loss_fn = nn.MSELoss(reduction='none')
 
         self.metrics = {
-            "preds_norm": ScoreNormMetric(),
-            "targets_norm": ScoreNormMetric(),
+            "spearman": SpearmanCorrCoef(),
+            "mse": MeanSquaredError(),
+            "r2": R2Score(),
+            "pearson": PearsonCorrCoef()
         }
-
-        self.model = score_model
-        self.embed_model = AutoModel.from_pretrained(self.config.lm.pretrained_pepclm)
+        
+        self.model = energy_model
+        self.embed_model = AutoModel.from_pretrained(self.config.lm.pretrained_esm)
         freeze_model(self.embed_model)
         self.embed_model.eval()
 
@@ -31,49 +31,30 @@ class TransportModule(pl.LightningModule):
     # -------# Classifier step #-------- #
     def forward(self, batch):
         if 'input_ids' in batch:
-            embeddings = embed_smiles(batch, self.embed_model)
+            embeddings = self.compute_embedding(batch)
         else:
             embeddings = batch['embeds']
 
         if embeddings.ndim == 3:
-            z = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
+            # Mean pooling ignoring pad tokens
+            pooled = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
         elif embeddings.ndim == 1:
             # Latents with correct dims are provided during langevin transport
-            z = embeddings.unsqueeze(0)  # Only need to introduce a batch dimension
+            # Only need to introduce a batch dimension
+            pooled = embeddings.unsqueeze(0)
         else:
             raise ValueError(f"Incorrect embedding dim of {embeddings.ndim} provided")
-
-        # Score matching loss computed on perturbed embeddings
-        noise = torch.randn_like(z)
-        z_prime = z + (noise * self.sigma)
-        s_theta = self.model(z_prime)
-
-        return s_theta, z, z_prime
-
-    def compute_loss(self, batch, return_target=False):
-        """Helper method to handle loss calculation"""
-        score, z, z_prime = self.forward(batch)
-        loss = self.loss_fn(score, z, z_prime).mean()
-        if return_target:
-            with torch.no_grad():
-                target = (z - z_prime) / (self.sigma ** 2)
-            return loss, score, target
-        else:
-            return loss, score
+        
+        logits = self.model(pooled)
+        return logits
 
     
     # -------# Training / Evaluation #-------- #
-    def on_train_start(self):
-        self.loss_fn.to(self.device)
-
     def training_step(self, batch, batch_idx):
         train_loss, _ = self.compute_loss(batch)
         self.log(name="train/loss", value=train_loss.item(), on_step=True, on_epoch=False, logger=True, sync_dist=True)
         self.save_ckpt()
         return train_loss
-
-    def on_validation_start(self):
-        self.loss_fn.to(self.device)
 
     def validation_step(self, batch, batch_idx):
         val_loss, _ = self.compute_loss(batch)
@@ -81,14 +62,16 @@ class TransportModule(pl.LightningModule):
         return val_loss
 
     def on_test_start(self):
-        self.loss_fn.to(self.device)
         for metric in self.metrics.values():
             metric.to(self.device)
 
     def test_step(self, batch, batch_idx):
-        test_loss, pred_score, target_score = self.compute_loss(batch, return_target=True)
-        self.metrics['preds_norm'].update(pred_score)
-        self.metrics['targets_norm'].update(target_score)
+        test_loss, preds = self.compute_loss(batch)
+        labels = batch['labels']
+
+        for metric in self.metrics.values():
+            metric.update(preds, labels)
+
         self.log("test/loss", test_loss, on_step=False, on_epoch=True, sync_dist=True)
         return test_loss
 
@@ -120,8 +103,27 @@ class TransportModule(pl.LightningModule):
         return [optimizer], [scheduler_dict]
 
 
+    # -------# Loss and Test Set Metrics #-------- #
+    def compute_loss(self, batch):
+        """Helper method to handle loss calculation"""
+        labels = batch['labels']
+        preds = self.forward(batch)
+        _print(f'logits: {preds}')
+        _print(f'labels: {labels}')
+        loss = self.loss_fn(preds, labels).mean()
+        return loss, preds
+
 
     # -------# Helper Functions #-------- #
+    @torch.no_grad()
+    def compute_embedding(self, batch):
+        outs = self.embed_model(
+            input_ids=batch['input_ids'],
+            attention_mask=batch['attention_mask']
+        )
+        embeds = outs.last_hidden_state
+        return embeds
+
     def save_ckpt(self):
         curr_step = self.global_step
         save_every = self.config.training.val_check_interval

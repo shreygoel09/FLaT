@@ -11,12 +11,12 @@ from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from transformers import AutoTokenizer
 
-from src.latent_transport.energy.models import SolubilityClassifier
-from src.latent_transport.energy.solubility.pl_module import TransportModule
-from src.latent_transport.energy.solubility.dataloader import CustomDataset, CustomDataModule
+from src.latent_transport.score.models import SolubilityClassifier
+from src.latent_transport.score.solubility.pl_module import TransportModule
+from src.latent_transport.score.solubility.dataloader import CustomDataset, CustomDataModule
 
 
-config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/sol.yaml")
+config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/score/sol.yaml")
 
 
 # -------- Model Loader -------- #

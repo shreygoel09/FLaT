@@ -5,10 +5,10 @@ base_dir: /home/a03-sgoel/FLaT
 
 
 lm:
-  pretrained_pepclm: aaronfeller/PeptideCLM-23M-all
+  pretrained_esm: facebook/esm2_t33_650M_UR50D
 
 model:
-  d_model: 768
+  d_model: 1280
   dropout: 0.5
 
 optim:
@@ -19,38 +19,39 @@ optim:
   beta1: 0.9
   beta2: 0.98
   power: 1
+  sigma: 1.0
 
 
 training:
-  mode: test  # train / test
+  mode: train  # train / test
   n_layers: 4
   max_steps: 30000
   warmup_steps: 1500
   log_every_n_steps: 5
   num_sanity_val_steps: 2
-  val_check_interval: 250
+  val_check_interval: 24
   enable_progress_bar: true
   grad_clip_val: 1.0
   devices: [0]  # list of GPU IDs from 0-7
 
 
 data:
-  batch_size: 32
+  batch_size: 16
   max_seq_len: 1024
-  train: ${base_dir}/data/permeability/train.csv
-  test: ${base_dir}/data/permeability/test.csv
-  val: ${base_dir}/data/permeability/val.csv
+  train: ${base_dir}/data/stability/score/train.csv
+  test: ${base_dir}/data/stability/score/test.csv
+  val: ${base_dir}/data/stability/score/val.csv
 
 
 wandb:
-  project: flat_permeability
+  project: flat_stability
   group: programmablebio
-  name: perm_deep-mlp_steps30k_lr1e-4_bsz32_drpt0.5_betas0.99-0.98
+  name: redo_score_stability_deep-mlp_steps30k_lr1e-4_bsz16_drpt0.5_betas0.99-0.98
   id: ${.name}_${seed}
 
 
 checkpointing:
   save_every_n_steps: 1000
-  save_dir: ${base_dir}/checkpoints/energy/${wandb.name}
+  save_dir: ${base_dir}/checkpoints/score/${wandb.name}
   resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt

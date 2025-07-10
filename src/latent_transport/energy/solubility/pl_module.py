@@ -13,7 +13,7 @@ class TransportModule(pl.LightningModule):
     def __init__(self, config, energy_model):
         super().__init__()
         self.config = config
-        self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
+        self.loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
 
         self.metrics = {
             "accuracy": BinaryAccuracy(),
@@ -59,6 +59,10 @@ class TransportModule(pl.LightningModule):
         val_loss, _ = self.compute_loss(batch)
         self.log(name="val/loss", value=val_loss.item(), on_step=False, on_epoch=True, logger=True, sync_dist=True)
         return val_loss
+
+    def on_test_start(self):
+        for metric in self.metrics.values():
+            metric.to(self.device)
 
     def test_step(self, batch, batch_idx):
         test_loss, probs = self.compute_loss(batch)
@@ -112,7 +116,7 @@ class TransportModule(pl.LightningModule):
         probs = torch.sigmoid(logits)
         _print(f'logits: {logits}')
         _print(f'probs: {probs}')
-        loss = self.loss_fn(logits, labels).mean()
+        loss = self.loss_fn(logits, labels)
         return loss, probs
 
 

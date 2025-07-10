@@ -9,20 +9,20 @@ from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 
-from src.latent_transport.energy.models import PermeabiltyRegressor
-from src.latent_transport.energy.permeability.pl_module import TransportModule
-from src.latent_transport.energy.permeability.dataloader import CustomDataset, CustomDataModule
-from src.latent_transport.energy.permeability.tokenizer import SMILES_SPE_Tokenizer
+from src.latent_transport.score.models import PermeabiltyRegressor
+from src.latent_transport.score.permeability.pl_module import TransportModule
+from src.latent_transport.score.permeability.dataloader import CustomDataset, CustomDataModule
+from src.latent_transport.score.permeability.tokenizer import SMILES_SPE_Tokenizer
 
-config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/perm.yaml")
+config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/score/perm.yaml")
 
 
 # -------- Model Loader -------- #
 energy_model = PermeabiltyRegressor(config)
 pl_module = TransportModule(config, energy_model)
 tokenizer = SMILES_SPE_Tokenizer(
-    "/home/a03-sgoel/FLaT/src/latent_transport/energy/permeability/new_vocab.txt",
-    "/home/a03-sgoel/FLaT/src/latent_transport/energy/permeability/new_splits.txt"
+    "/home/a03-sgoel/FLaT/src/latent_transport/score/permeability/new_vocab.txt",
+    "/home/a03-sgoel/FLaT/src/latent_transport/score/permeability/new_splits.txt"
 )
 
 # -------- Datasets -------- #

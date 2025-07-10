@@ -24,33 +24,34 @@ optim:
 training:
   mode: train  # train / test
   n_layers: 4
-  max_steps: 30000
-  warmup_steps: 1500
+  max_steps: 60000
+  warmup_steps: 3000
   log_every_n_steps: 10
   num_sanity_val_steps: 2
-  val_check_interval: 1500
+  val_check_interval: 977
   enable_progress_bar: true
   grad_clip_val: 1.0
+  accum_grad_batches: 2
   devices: [0]  # list of GPU IDs from 0-7
 
 
 data:
-  batch_size: 32
+  batch_size: 64
   max_seq_len: 1024
-  train: ${base_dir}/data/solubility/train.csv
-  test: ${base_dir}/data/solubility/test.csv
-  val: ${base_dir}/data/solubility/val.csv
+  train: ${base_dir}/data/solubility/energy/train.csv
+  test: ${base_dir}/data/solubility/energy/test.csv
+  val: ${base_dir}/data/solubility/energy/val.csv
 
 
 wandb:
   project: flat_solubility_v2
   group: programmablebio
-  name: sol_simple-mlp_steps30k_lr3e-5_bsz32_drpt0.5_betas0.99-0.98
+  name: redo_energy_sol_simple-mlp_steps60k_lr3e-5_bsz64_accum-grad-btch2_drpt0.5_betas0.99-0.98
   id: ${.name}_${seed}
 
 
 checkpointing:
-  save_every_n_steps: 250
+  save_every_n_steps: 977
   save_dir: ${base_dir}/checkpoints/energy/${wandb.name}
   resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt

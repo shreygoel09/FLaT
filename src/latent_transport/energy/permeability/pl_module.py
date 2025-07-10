@@ -4,7 +4,7 @@ import torch.nn as nn
 import lightning.pytorch as pl
 
 from transformers import AutoModel
-from torchmetrics import SpearmanCorrCoef, MeanSquaredError
+from torchmetrics import SpearmanCorrCoef, MeanSquaredError, R2Score, PearsonCorrCoef
 
 from src.latent_transport.energy.permeability.embed import embed_smiles
 from utils.model_utils import CosineWarmup, _print, mean_pool, freeze_model
@@ -19,6 +19,8 @@ class TransportModule(pl.LightningModule):
         self.metrics = {
             "spearman": SpearmanCorrCoef(),
             "mse": MeanSquaredError(),
+            "r2": R2Score(),
+            "pearson": PearsonCorrCoef()
         }
         
         self.model = energy_model
@@ -59,6 +61,10 @@ class TransportModule(pl.LightningModule):
         val_loss, _ = self.compute_loss(batch)
         self.log(name="val/loss", value=val_loss.item(), on_step=False, on_epoch=True, logger=True, sync_dist=True)
         return val_loss
+
+    def on_test_start(self):
+        for metric in self.metrics.values():
+            metric.to(self.device)
 
     def test_step(self, batch, batch_idx):
         test_loss, preds = self.compute_loss(batch)

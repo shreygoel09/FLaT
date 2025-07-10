@@ -1,47 +1,70 @@
 import gc
 import torch
-import torch.nn as nn
+import torch.nn.functional as F
 import lightning.pytorch as pl
-from copy import deepcopy
 
-from src.latent_transport.energy.peptide_utils.embed import embed_smiles
-from utils.model_utils import CosineWarmup, _print
+from transformers import AutoModel
+
+from utils.model_utils import (
+    ScoreMatchingLoss, ScoreNormMetric,
+    CosineWarmup, mean_pool, freeze_model, _print
+)
 
 
 class TransportModule(pl.LightningModule):
-    def __init__(self, config, prop, energy_model, embedding_model, metrics, loss_fn):
+    def __init__(self, config, score_model):
         super().__init__()
         self.config = config
-        self.prop = prop
-        self.loss_fn = loss_fn
-        self.metrics = {k: deepcopy(v) for k, v in metrics.items()}
-        self.embed_model = embedding_model
-        self.model = energy_model
+        self.sigma = self.config.optim.sigma
+        self.loss_fn = ScoreMatchingLoss(sigma=self.sigma)
+
+        self.metrics = {
+            "preds_norm": ScoreNormMetric(),
+            "targets_norm": ScoreNormMetric(),
+        }
+
+        self.model = score_model
+        self.embed_model = AutoModel.from_pretrained(self.config.lm.pretrained_esm)
+        freeze_model(self.embed_model)
+        self.embed_model.eval()
 
 
     # -------# Classifier step #-------- #
     def forward(self, batch):
         if 'input_ids' in batch:
-            embeddings = self.get_embeddings(batch['input_ids'], batch['attention_mask'])
+            embeddings = self.compute_embedding(batch)
         else:
             embeddings = batch['embeds']
 
         if embeddings.ndim == 3:
-            pooled = embeddings.mean(dim=1) # Mean pool needed during training
+            z = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
         elif embeddings.ndim == 1:
             # Latents with correct dims are provided during langevin transport
-            pooled = embeddings.unsqueeze(0)  # Only need to introduce a batch dimension
+            z = embeddings.unsqueeze(0)  # Only need to introduce a batch dimension
         else:
-            raise ValueError(f"Incorrect embedding dim of {embeddings.ndim} provided")
+            raise ValueError(f"Incorrect embedding dim of {embeddings.ndim}")
 
-        logits = self.model(pooled)
-        return logits
+        # Score matching loss computed on perturbed embeddings
+        noise = torch.randn_like(z)
+        z_prime = z + (noise * self.sigma)
+        s_theta = self.model(z_prime)
+
+        return s_theta, z, z_prime
+
+    def compute_loss(self, batch, return_target=False):
+        """Helper method to handle loss calculation"""
+        score, z, z_prime = self.forward(batch)
+        loss = self.loss_fn(score, z, z_prime).mean()
+        if return_target:
+            with torch.no_grad():
+                target = (z - z_prime) / (self.sigma ** 2)
+            return loss, score, target
+        else:
+            return loss, score
 
     
     # -------# Training / Evaluation #-------- #
     def on_train_start(self):
-        self.model.to(self.device)
-        self.embed_model.to(self.device)
         self.loss_fn.to(self.device)
 
     def training_step(self, batch, batch_idx):
@@ -51,8 +74,6 @@ class TransportModule(pl.LightningModule):
         return train_loss
 
     def on_validation_start(self):
-        self.model.to(self.device)
-        self.embed_model.to(self.device)
         self.loss_fn.to(self.device)
 
     def validation_step(self, batch, batch_idx):
@@ -61,26 +82,20 @@ class TransportModule(pl.LightningModule):
         return val_loss
 
     def on_test_start(self):
-        self.model.to(self.device)
-        self.embed_model.to(self.device)
+        self.loss_fn.to(self.device)
         for metric in self.metrics.values():
             metric.to(self.device)
-        self.loss_fn.to(self.device)
 
     def test_step(self, batch, batch_idx):
-        test_loss, probs = self.compute_loss(batch)
-        labels = batch['labels'].int()
-
-        for metric in self.metrics.values():
-            metric.update(probs, labels)
-
+        test_loss, pred_score, target_score = self.compute_loss(batch, return_target=True)
+        self.metrics['preds_norm'].update(pred_score)
+        self.metrics['targets_norm'].update(target_score)
         self.log("test/loss", test_loss, on_step=False, on_epoch=True, sync_dist=True)
         return test_loss
 
     def on_test_epoch_end(self):
         for name, metric in self.metrics.items():
-            metric_val = metric.compute()
-            self.log(f'test/{name}', metric_val, sync_dist=True)
+            self.log(f'test/{name}', metric.compute(), sync_dist=True)
             metric.reset()
 
     def optimizer_step(self, *args, **kwargs):
@@ -105,26 +120,11 @@ class TransportModule(pl.LightningModule):
         }
         return [optimizer], [scheduler_dict]
 
-
-    # -------# Loss and Test Set Metrics #-------- #
-    @torch.no_grad
-    def get_embeddings(self, batch):
-        if self.prop == "sol":
-            outputs = self.embed_model(input_ids=batch['input_ids'], attention_mask=batch['attention_mask'])
-            embeddings = outputs.last_hidden_state
-        elif self.prop == "perm":
-            ...
-        return embeddings
-
-    def compute_loss(self, batch):
-        """Helper method to handle loss calculation"""
-        labels = batch['labels']
-        logits = self.forward(batch)
-        probs = torch.sigmoid(logits)
-        _print(f'logits: {logits}')
-        _print(f'probs: {probs}')
-        loss = self.loss_fn(logits, labels).mean()
-        return loss, probs
+    @torch.no_grad()
+    def compute_embedding(self, batch):
+        outs = self.embed_model(**batch)
+        embeds = outs.last_hidden_state
+        return embeds
 
 
     # -------# Helper Functions #-------- #

@@ -4,26 +4,23 @@ import os
 import wandb
 import lightning.pytorch as pl
 
-from importlib import import_module
 from omegaconf import OmegaConf
+from transformers import AutoTokenizer
 from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
-from transformers import AutoTokenizer
 
-from src.latent_transport.energy.models import SolubilityClassifier
-from src.latent_transport.energy.solubility.pl_module import TransportModule
-from src.latent_transport.energy.solubility.dataloader import CustomDataset, CustomDataModule
+from src.latent_transport.score.models import StabilityRegressor
+from src.latent_transport.score.stability.pl_module import TransportModule
+from src.latent_transport.score.stability.dataloader import CustomDataset, CustomDataModule
 
-
-config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/sol.yaml")
+config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/score/stability.yaml")
 
 
 # -------- Model Loader -------- #
+score_model = StabilityRegressor(config)
+pl_module = TransportModule(config, score_model)
 tokenizer = AutoTokenizer.from_pretrained(config.lm.pretrained_esm)
-energy_model = SolubilityClassifier(config)
-pl_module = TransportModule(config, energy_model)
-
 
 # -------- Datasets -------- #
 train_dataset = CustomDataset(config, config.data.train, tokenizer)
@@ -63,8 +60,7 @@ trainer = pl.Trainer(
     callbacks=[checkpoint_callback, lr_monitor],
     logger=wandb_logger,
     log_every_n_steps=config.training.log_every_n_steps,
-    val_check_interval=config.training.val_check_interval,
-    accumulate_grad_batches=config.training.accum_grad_batches
+    val_check_interval=config.training.val_check_interval
 )
 
 

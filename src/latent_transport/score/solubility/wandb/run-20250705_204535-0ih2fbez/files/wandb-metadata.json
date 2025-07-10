@@ -1,0 +1,50 @@
+{
+  "os": "Linux-5.15.0-142-generic-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.12",
+  "startedAt": "2025-07-05T20:45:35.520994Z",
+  "program": "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/main.py",
+  "codePath": "src/latent_transport/score/solubility/main.py",
+  "git": {
+    "remote": "git@github.com:shreygoel09/FLaT.git",
+    "commit": "c04ea39a0cf10ddcf2695c61a8de419da55e837c"
+  },
+  "email": "shrey.goel@duke.edu",
+  "root": "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility",
+  "host": "a03-penn01",
+  "executable": "/usr/bin/python3",
+  "codePathLocal": "main.py",
+  "cpu_count": 16,
+  "cpu_count_logical": 16,
+  "gpu": "NVIDIA H100L-94C",
+  "gpu_count": 2,
+  "disk": {
+    "/": {
+      "total": "5327898955776",
+      "used": "2727268065280"
+    }
+  },
+  "memory": {
+    "total": "270257520640"
+  },
+  "cpu": {
+    "count": 16,
+    "countLogical": 16
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA H100L-94C",
+      "memoryTotal": "100931731456",
+      "cudaCores": 16896,
+      "architecture": "Hopper",
+      "uuid": "GPU-efb28947-1de6-11b2-9ee6-fb3af96b676a"
+    },
+    {
+      "name": "NVIDIA H100L-94C",
+      "memoryTotal": "100931731456",
+      "cudaCores": 16896,
+      "architecture": "Hopper",
+      "uuid": "GPU-f2c7571a-1de6-11b2-b748-c2f728f46f49"
+    }
+  ],
+  "cudaVersion": "12.4"
+}

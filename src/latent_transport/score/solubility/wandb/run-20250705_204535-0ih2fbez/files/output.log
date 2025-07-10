@@ -1,0 +1,210 @@
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+You are using a CUDA device ('NVIDIA H100L-94C') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/loggers/wandb.py:397: There is a wandb run already in progress and newly created instances of `WandbLogger` will reuse this run. If this is not desired, call `wandb.finish()` before instantiating `WandbLogger`.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+
+  | Name        | Type                 | Params | Mode
+-------------------------------------------------------------
+0 | loss_fn     | ScoreMatchingLoss    | 0      | train
+1 | model       | SolubilityClassifier | 3.3 M  | train
+2 | embed_model | EsmModel             | 652 M  | eval
+-------------------------------------------------------------
+3.3 M     Trainable params
+652 M     Non-trainable params
+655 M     Total params
+2,622.533 Total estimated model params size (MB)
+6         Modules in train mode
+608       Modules in eval mode
+Sanity Checking DataLoader 0:   0%|                                                                                           | 0/2 [00:00<?, ?it/s]
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/main.py", line 74, in <module>
+[rank0]:     trainer.fit(pl_module, datamodule=data_module)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 561, in fit
+[rank0]:     call._call_and_handle_interrupt(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/call.py", line 47, in _call_and_handle_interrupt
+[rank0]:     return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/launchers/subprocess_script.py", line 105, in launch
+[rank0]:     return function(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 599, in _fit_impl
+[rank0]:     self._run(model, ckpt_path=ckpt_path)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 1012, in _run
+[rank0]:     results = self._run_stage()
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 1054, in _run_stage
+[rank0]:     self._run_sanity_check()
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 1083, in _run_sanity_check
+[rank0]:     val_loop.run()
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/loops/utilities.py", line 179, in _decorator
+[rank0]:     return loop_run(self, *args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/loops/evaluation_loop.py", line 145, in run
+[rank0]:     self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/loops/evaluation_loop.py", line 437, in _evaluation_step
+[rank0]:     output = call._call_strategy_hook(trainer, hook_name, *step_args)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/call.py", line 328, in _call_strategy_hook
+[rank0]:     output = fn(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/strategy.py", line 411, in validation_step
+[rank0]:     return self._forward_redirection(self.model, self.lightning_module, "validation_step", *args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/strategy.py", line 641, in __call__
+[rank0]:     wrapper_output = wrapper_module(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/parallel/distributed.py", line 1636, in forward
+[rank0]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/parallel/distributed.py", line 1454, in _run_ddp_forward
+[rank0]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/strategy.py", line 634, in wrapped_forward
+[rank0]:     out = method(*_args, **_kwargs)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 65, in validation_step
+[rank0]:     val_loss, _ = self.compute_loss(batch)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 118, in compute_loss
+[rank0]:     score, z, z_prime = self.forward(batch)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 31, in forward
+[rank0]:     embeddings = self.get_embeddings(batch)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 112, in get_embeddings
+[rank0]:     outputs = self.embed_model(input_ids=batch['input_ids'], attention_mask=batch['attention_mask'])
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 907, in forward
+[rank0]:     encoder_outputs = self.encoder(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 612, in forward
+[rank0]:     layer_outputs = layer_module(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 502, in forward
+[rank0]:     self_attention_outputs = self.attention(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 436, in forward
+[rank0]:     self_outputs = self.self(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 337, in forward
+[rank0]:     query_layer, key_layer = self.rotary_embeddings(query_layer, key_layer)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 118, in forward
+[rank0]:     apply_rotary_pos_emb(q, self._cos_cached, self._sin_cached),
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 53, in apply_rotary_pos_emb
+[rank0]:     return (x * cos) + (rotate_half(x) * sin)
+[rank0]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 160.00 MiB. GPU 0 has a total capacity of 93.65 GiB of which 38.88 MiB is free. Process 641415 has 27.04 GiB memory in use. Process 641502 has 22.61 GiB memory in use. Process 641580 has 22.20 GiB memory in use. Process 651960 has 10.47 GiB memory in use. Process 725515 has 4.48 GiB memory in use. Including non-PyTorch memory, this process has 4.55 GiB memory in use. Of the allocated memory 3.49 GiB is allocated by PyTorch, and 209.30 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/main.py", line 74, in <module>
+[rank0]:     trainer.fit(pl_module, datamodule=data_module)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 561, in fit
+[rank0]:     call._call_and_handle_interrupt(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/call.py", line 47, in _call_and_handle_interrupt
+[rank0]:     return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/launchers/subprocess_script.py", line 105, in launch
+[rank0]:     return function(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 599, in _fit_impl
+[rank0]:     self._run(model, ckpt_path=ckpt_path)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 1012, in _run
+[rank0]:     results = self._run_stage()
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 1054, in _run_stage
+[rank0]:     self._run_sanity_check()
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 1083, in _run_sanity_check
+[rank0]:     val_loop.run()
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/loops/utilities.py", line 179, in _decorator
+[rank0]:     return loop_run(self, *args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/loops/evaluation_loop.py", line 145, in run
+[rank0]:     self._evaluation_step(batch, batch_idx, dataloader_idx, dataloader_iter)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/loops/evaluation_loop.py", line 437, in _evaluation_step
+[rank0]:     output = call._call_strategy_hook(trainer, hook_name, *step_args)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/trainer/call.py", line 328, in _call_strategy_hook
+[rank0]:     output = fn(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/strategy.py", line 411, in validation_step
+[rank0]:     return self._forward_redirection(self.model, self.lightning_module, "validation_step", *args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/strategy.py", line 641, in __call__
+[rank0]:     wrapper_output = wrapper_module(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/parallel/distributed.py", line 1636, in forward
+[rank0]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/parallel/distributed.py", line 1454, in _run_ddp_forward
+[rank0]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/lightning/pytorch/strategies/strategy.py", line 634, in wrapped_forward
+[rank0]:     out = method(*_args, **_kwargs)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 65, in validation_step
+[rank0]:     val_loss, _ = self.compute_loss(batch)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 118, in compute_loss
+[rank0]:     score, z, z_prime = self.forward(batch)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 31, in forward
+[rank0]:     embeddings = self.get_embeddings(batch)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/FLaT/src/latent_transport/score/solubility/pl_module.py", line 112, in get_embeddings
+[rank0]:     outputs = self.embed_model(input_ids=batch['input_ids'], attention_mask=batch['attention_mask'])
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 907, in forward
+[rank0]:     encoder_outputs = self.encoder(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 612, in forward
+[rank0]:     layer_outputs = layer_module(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 502, in forward
+[rank0]:     self_attention_outputs = self.attention(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 436, in forward
+[rank0]:     self_outputs = self.self(
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 337, in forward
+[rank0]:     query_layer, key_layer = self.rotary_embeddings(query_layer, key_layer)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1553, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1562, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 118, in forward
+[rank0]:     apply_rotary_pos_emb(q, self._cos_cached, self._sin_cached),
+[rank0]:   File "/home/a03-sgoel/.local/lib/python3.10/site-packages/transformers/models/esm/modeling_esm.py", line 53, in apply_rotary_pos_emb
+[rank0]:     return (x * cos) + (rotate_half(x) * sin)
+[rank0]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 160.00 MiB. GPU 0 has a total capacity of 93.65 GiB of which 38.88 MiB is free. Process 641415 has 27.04 GiB memory in use. Process 641502 has 22.61 GiB memory in use. Process 641580 has 22.20 GiB memory in use. Process 651960 has 10.47 GiB memory in use. Process 725515 has 4.48 GiB memory in use. Including non-PyTorch memory, this process has 4.55 GiB memory in use. Of the allocated memory 3.49 GiB is allocated by PyTorch, and 209.30 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)

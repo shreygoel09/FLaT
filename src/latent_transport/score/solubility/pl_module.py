@@ -4,26 +4,24 @@ import torch.nn as nn
 import lightning.pytorch as pl
 
 from transformers import AutoModel
-from torchmetrics.classification import BinaryAccuracy, BinaryAUROC, BinaryF1Score, BinaryPrecision, BinaryRecall
 
+from src.latent_transport.score.models import ScoreMatchingLoss, ScoreNormMetric
 from utils.model_utils import CosineWarmup, _print, mean_pool, freeze_model
 
 
 class TransportModule(pl.LightningModule):
-    def __init__(self, config, energy_model):
+    def __init__(self, config, score_model):
         super().__init__()
         self.config = config
-        self.loss_fn = nn.BCEWithLogitsLoss(reduction='none')
+        self.sigma = self.config.optim.sigma
+        self.loss_fn = ScoreMatchingLoss(sigma=self.sigma)
 
         self.metrics = {
-            "accuracy": BinaryAccuracy(),
-            "auroc": BinaryAUROC(),
-            "f1": BinaryF1Score(),
-            "precision": BinaryPrecision(),
-            "recall": BinaryRecall()
+            "norm": ScoreNormMetric(),
+            'targets_norm': ScoreNormMetric()
         }
 
-        self.model = energy_model
+        self.model = score_model
         self.embed_model = AutoModel.from_pretrained(self.config.lm.pretrained_esm)
         freeze_model(self.embed_model)
         self.embed_model.eval()
@@ -37,35 +35,49 @@ class TransportModule(pl.LightningModule):
             embeddings = batch['embeds']
 
         if embeddings.ndim == 3:
-            pooled = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
+            z = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
         elif embeddings.ndim == 1:
             # Latents with correct dims are provided during langevin transport
-            pooled = embeddings.unsqueeze(0)  # Only need to introduce a batch dimension
+            z = embeddings.unsqueeze(0)  # Only need to introduce a batch dimension
         else:
             raise ValueError(f"Incorrect embedding dim of {embeddings.ndim} provided")
 
-        logits = self.model(pooled)
-        return logits
+        # Score matching loss computed on perturbed embeddings
+        noise = torch.randn_like(z)
+        z_prime = z + (noise * self.sigma)
+        s_theta = self.model(z_prime)
+
+        return s_theta, z, z_prime
 
     
     # -------# Training / Evaluation #-------- #
+    def on_train_start(self):
+        self.loss_fn.to(self.device)
+
     def training_step(self, batch, batch_idx):
         train_loss, _ = self.compute_loss(batch)
         self.log(name="train/loss", value=train_loss.item(), on_step=True, on_epoch=False, logger=True, sync_dist=True)
         self.save_ckpt()
         return train_loss
 
+    def on_validation_start(self):
+        self.loss_fn.to(self.device)
+
     def validation_step(self, batch, batch_idx):
         val_loss, _ = self.compute_loss(batch)
         self.log(name="val/loss", value=val_loss.item(), on_step=False, on_epoch=True, logger=True, sync_dist=True)
         return val_loss
 
+    def on_test_start(self):
+        self.loss_fn.to(self.device)
+        for metric in self.metrics.values():
+            metric.to(self.device)
+
     def test_step(self, batch, batch_idx):
-        test_loss, probs = self.compute_loss(batch)
-        labels = batch['labels'].int()
+        test_loss, score = self.compute_loss(batch)
 
         for metric in self.metrics.values():
-            metric.update(probs, labels)
+            metric.update(score)
 
         self.log("test/loss", test_loss, on_step=False, on_epoch=True, sync_dist=True)
         return test_loss
@@ -107,13 +119,9 @@ class TransportModule(pl.LightningModule):
 
     def compute_loss(self, batch):
         """Helper method to handle loss calculation"""
-        labels = batch['labels']
-        logits = self.forward(batch)
-        probs = torch.sigmoid(logits)
-        _print(f'logits: {logits}')
-        _print(f'probs: {probs}')
-        loss = self.loss_fn(logits, labels).mean()
-        return loss, probs
+        score, z, z_prime = self.forward(batch)
+        loss = self.loss_fn(score, z, z_prime).mean()
+        return loss, score
 
 
     # -------# Helper Functions #-------- #

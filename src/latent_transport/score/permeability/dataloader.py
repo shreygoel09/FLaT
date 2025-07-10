@@ -4,8 +4,6 @@ import lightning.pytorch as pl
 
 from torch.utils.data import Dataset, DataLoader
 
-from src.latent_transport.energy.permeability.embed import get_pep_dps, fingerprints_from_smiles
-
 class CustomDataset(Dataset):
     def __init__(self, config, data_path, tokenizer):
         self.config = config
@@ -17,7 +15,6 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         sequence = self.data.iloc[idx]["Sequence"]
-        label = self.data.iloc[idx] ["Label"]
 
         tokens = self.tokenizer(
             sequence,
@@ -30,7 +27,6 @@ class CustomDataset(Dataset):
         item = {
             "input_ids": tokens['input_ids'].squeeze(0),
             "attention_mask": tokens['attention_mask'].squeeze(0),
-            "labels": torch.tensor(label, dtype=torch.float32),
         }
 
         return item
@@ -39,7 +35,6 @@ def collate_fn(batch):
     batch_dict = {
         'input_ids': torch.stack([item['input_ids'] for item in batch]),
         'attention_mask': torch.stack([item['attention_mask'] for item in batch]),
-        'labels': torch.stack([item['labels'] for item in batch]),
     }
     return batch_dict
 
