@@ -11,7 +11,7 @@ from utils.model_utils import CosineWarmup, _print, mean_pool, freeze_model
 
 
 class TransportModule(pl.LightningModule):
-    def __init__(self, config, score_model):
+    def __init__(self, config, score_model, embed_model):
         super().__init__()
         self.config = config
         self.sigma = self.config.optim.sigma

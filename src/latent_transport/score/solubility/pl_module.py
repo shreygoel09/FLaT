@@ -5,8 +5,8 @@ import lightning.pytorch as pl
 
 from transformers import AutoModel
 
-from src.latent_transport.score.models import ScoreMatchingLoss, ScoreNormMetric
-from utils.model_utils import CosineWarmup, _print, mean_pool, freeze_model
+from utils.training_utils import ScoreMatchingLoss, ScoreNormMetric, CosineWarmup
+from utils.model_utils import _print, mean_pool, freeze_model
 
 
 class TransportModule(pl.LightningModule):
@@ -36,9 +36,9 @@ class TransportModule(pl.LightningModule):
 
         if embeddings.ndim == 3:
             z = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
-        elif embeddings.ndim == 1:
+        elif embeddings.ndim == 2:
             # Latents with correct dims are provided during langevin transport
-            z = embeddings.unsqueeze(0)  # Only need to introduce a batch dimension
+            z = embeddings
         else:
             raise ValueError(f"Incorrect embedding dim of {embeddings.ndim} provided")
 
