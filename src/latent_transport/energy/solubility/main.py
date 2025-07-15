@@ -78,6 +78,9 @@ elif config.training.mode == "test":
     state_dict = pl_module.get_state_dict(ckpt_path)
     pl_module.load_state_dict(state_dict)
     trainer.test(pl_module, datamodule=data_module, ckpt_path=ckpt_path)
+elif config.training.mode == "resume":
+    ckpt_path = os.path.join(config.checkpointing.save_dir, "step=8793.ckpt")
+    trainer.fit(pl_module, datamodule=data_module, ckpt_path=ckpt_path)
 else:
     raise ValueError(f"{config.training.mode} is invalid. Must be 'train' or 'test'")
 

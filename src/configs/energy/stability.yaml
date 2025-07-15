@@ -22,7 +22,7 @@ optim:
 
 
 training:
-  mode: train  # train / test
+  mode: resume  # train / test / resume
   n_layers: 4
   max_steps: 30000
   warmup_steps: 1500
@@ -60,7 +60,7 @@ wandb:
 
 
 checkpointing:
-  save_every_n_steps: 1000
+  save_every_n_steps: 2000
   save_dir: ${base_dir}/checkpoints/energy/${wandb.name}
-  resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
+  resume_ckpt_path: ${checkpointing.save_dir}/step=14160.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt

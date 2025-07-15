@@ -42,7 +42,7 @@ wandb_logger = WandbLogger(**config.wandb)
 
 # -------- Callbacks -------- #
 lr_monitor = LearningRateMonitor(logging_interval="step")
-checkpoint_callback = ModelCheckpoint(
+val_callback = ModelCheckpoint(
     monitor="val/loss",
     save_top_k=1,
     mode="min",
@@ -50,14 +50,13 @@ checkpoint_callback = ModelCheckpoint(
     filename="best_model",
 )
 
-
 # -------- Trainer -------- #
 trainer = pl.Trainer(
     max_steps=config.training.max_steps,
     accelerator="cuda",
     devices=config.training.devices if config.training.mode == 'train' else [0],
     strategy=DDPStrategy(find_unused_parameters=True),
-    callbacks=[checkpoint_callback, lr_monitor],
+    callbacks=[val_callback, lr_monitor],
     logger=wandb_logger,
     log_every_n_steps=config.training.log_every_n_steps,
     val_check_interval=config.training.val_check_interval
@@ -74,6 +73,8 @@ elif config.training.mode == "test":
     state_dict = pl_module.get_state_dict(ckpt_path)
     pl_module.load_state_dict(state_dict)
     trainer.test(pl_module, datamodule=data_module, ckpt_path=ckpt_path)
+elif config.training.mode == "resume":
+    trainer.fit(pl_module, datamodule=data_module, ckpt_path=config.checkpointing.resume_ckpt_path)
 else:
     raise ValueError(f"{config.training.mode} is invalid. Must be 'train' or 'test'")
 

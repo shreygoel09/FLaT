@@ -198,7 +198,7 @@ def main():
     seq_data['Optim Vals'] = optim_vals
     seq_data['Hamming'] = hammings
     
-    save_path = f'./results/optim/{mode}/{prop}/langevin-lr=0.5_{todays_date}_optim_seqs.csv'
+    save_path = f'./results/optim/{mode}/{prop}/langevin-lr=0.1_{todays_date}_optim_seqs.csv'
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     seq_data.to_csv(save_path, index=False)
 

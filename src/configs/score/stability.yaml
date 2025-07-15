@@ -23,10 +23,10 @@ optim:
 
 
 training:
-  mode: train  # train / test
+  mode: train  # train / test / resume
   n_layers: 4
-  max_steps: 30000
-  warmup_steps: 1500
+  max_steps: 50000
+  warmup_steps: 2500
   log_every_n_steps: 5
   num_sanity_val_steps: 2
   val_check_interval: 24
@@ -55,12 +55,12 @@ data:
 wandb:
   project: flat_stability
   group: programmablebio
-  name: redo_score_stability_deep-mlp_steps30k_lr1e-4_bsz16_drpt0.5_betas0.99-0.98
+  name: score_stability_deep-mlp_steps50k_lr1e-4_bsz16_drpt0.5_betas0.99-0.98
   id: ${.name}_${seed}
 
 
 checkpointing:
-  save_every_n_steps: 1000
+  save_every_n_steps: 2500
   save_dir: ${base_dir}/checkpoints/score/${wandb.name}
-  resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
+  resume_ckpt_path: ${checkpointing.save_dir}/step=19848.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt

@@ -3,13 +3,13 @@ import torch
 from collections import Counter
 from utils.model_utils import _print
 
-def calc_property_val(seq, tokenizer, transport_model, mode):
-    tokens = tokenizer(seq, return_tensors='pt')
+def calc_property_val(seq, tokenizer, transport_model, mode, device):
+    tokens = tokenizer(seq, return_tensors='pt').to(device)
     if mode == "score":
-        score, z, z_prime = transport_model(**tokens)
+        score, z, z_prime = transport_model(tokens)
         metric = score.norm(p=2, dim=1) / score.numel()
     elif mode == "energy":
-        logits = transport_model(**tokens)
+        logits = transport_model(tokens)
         metric = torch.sigmoid(logits)
     return metric
 

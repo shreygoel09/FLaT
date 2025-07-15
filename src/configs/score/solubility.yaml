@@ -38,7 +38,7 @@ sampling:
   langevin:
     steps: 64
     noise_eps: 1e-3
-    lr: 1e-2
+    lr: 0.1
   decoding:
     steps: 64
     lr: 0.1

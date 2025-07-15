@@ -2,9 +2,6 @@ import sys
 import torch.nn as nn
 
 
-
-
-
 def mean_pool(embeds, attention_mask):
     assert embeds.ndim == 3  # B, L, D
     assert attention_mask.ndim == 2  # B, L

@@ -5,10 +5,8 @@ import lightning.pytorch as pl
 
 from transformers import AutoModel
 
-from utils.model_utils import (
-    ScoreMatchingLoss, ScoreNormMetric,
-    CosineWarmup, mean_pool, freeze_model, _print
-)
+from utils.model_utils import mean_pool, freeze_model, _print
+from utils.training_utils import ScoreMatchingLoss, ScoreNormMetric, CosineWarmup
 
 
 class TransportModule(pl.LightningModule):
@@ -130,7 +128,7 @@ class TransportModule(pl.LightningModule):
     # -------# Helper Functions #-------- #
     def save_ckpt(self):
         curr_step = self.global_step
-        save_every = self.config.training.val_check_interval
+        save_every = self.config.checkpointing.save_every_n_steps
         if curr_step % save_every == 0 and curr_step > 0: 
             ckpt_path = f"{self.config.checkpointing.save_dir}/step={curr_step}.ckpt"
             self.trainer.save_checkpoint(ckpt_path)
