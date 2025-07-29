@@ -23,7 +23,7 @@ optim:
 
 
 training:
-  mode: train  # train / test / resume
+  mode: test  # train / test / resume
   n_layers: 4
   max_steps: 50000
   warmup_steps: 2500

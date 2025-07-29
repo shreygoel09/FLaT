@@ -4,7 +4,7 @@ import torch.nn as nn
 import lightning.pytorch as pl
 
 from transformers import AutoModel
-from torchmetrics.classification import BinaryAccuracy, BinaryAUROC, BinaryF1Score, BinaryPrecision, BinaryRecall
+from torchmetrics import SpearmanCorrCoef, MeanSquaredError, R2Score, PearsonCorrCoef
 
 from utils.model_utils import _print, mean_pool, freeze_model
 from utils.training_utils import CosineWarmup
@@ -14,16 +14,15 @@ class TransportModule(pl.LightningModule):
     def __init__(self, config, energy_model):
         super().__init__()
         self.config = config
-        self.loss_fn = nn.BCEWithLogitsLoss(reduction='mean')
+        self.loss_fn = nn.MSELoss(reduction='none')
 
         self.metrics = {
-            "accuracy": BinaryAccuracy(),
-            "auroc": BinaryAUROC(),
-            "f1": BinaryF1Score(),
-            "precision": BinaryPrecision(),
-            "recall": BinaryRecall()
+            "spearman": SpearmanCorrCoef(),
+            "mse": MeanSquaredError(),
+            "r2": R2Score(),
+            "pearson": PearsonCorrCoef()
         }
-
+        
         self.model = energy_model
         self.embed_model = AutoModel.from_pretrained(self.config.lm.pretrained_esm)
         freeze_model(self.embed_model)
@@ -33,11 +32,21 @@ class TransportModule(pl.LightningModule):
     # -------# Classifier step #-------- #
     def forward(self, batch):
         if 'input_ids' in batch:
-            embeddings = self.get_embeddings(batch)
+            embeddings = self.compute_embedding(batch)
         else:
             embeddings = batch['embeds']
 
-        logits = self.model(esm_embeds=embeddings, batch=batch)
+        if embeddings.ndim == 3:
+            # Mean pooling ignoring pad tokens
+            pooled = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
+        elif embeddings.ndim == 2:
+            # Latents with correct dims are provided during langevin transport
+            # Only need to introduce a batch dimension
+            pooled = embeddings.unsqueeze(0)
+        else:
+            raise ValueError(f"Incorrect embedding dim of {embeddings.ndim} provided")
+        
+        logits = self.model(pooled)
         return logits
 
     
@@ -58,11 +67,11 @@ class TransportModule(pl.LightningModule):
             metric.to(self.device)
 
     def test_step(self, batch, batch_idx):
-        test_loss, probs = self.compute_loss(batch)
-        labels = batch['labels'].int()
+        test_loss, preds = self.compute_loss(batch)
+        labels = batch['labels']
 
         for metric in self.metrics.values():
-            metric.update(probs, labels)
+            metric.update(preds, labels)
 
         self.log("test/loss", test_loss, on_step=False, on_epoch=True, sync_dist=True)
         return test_loss
@@ -96,24 +105,26 @@ class TransportModule(pl.LightningModule):
 
 
     # -------# Loss and Test Set Metrics #-------- #
-    @torch.no_grad
-    def get_embeddings(self, batch):
-        outputs = self.embed_model(input_ids=batch['input_ids'], attention_mask=batch['attention_mask'])
-        embeddings = outputs.last_hidden_state
-        return embeddings
-
     def compute_loss(self, batch):
         """Helper method to handle loss calculation"""
         labels = batch['labels']
-        logits = self.forward(batch)
-        probs = torch.sigmoid(logits)
-        _print(f'logits: {logits}')
-        _print(f'probs: {probs}')
-        loss = self.loss_fn(logits, labels)
-        return loss, probs
+        preds = self.forward(batch)
+        _print(f'logits: {preds}')
+        _print(f'labels: {labels}')
+        loss = self.loss_fn(preds, labels).mean()
+        return loss, preds
 
 
     # -------# Helper Functions #-------- #
+    @torch.no_grad()
+    def compute_embedding(self, batch):
+        outs = self.embed_model(
+            input_ids=batch['input_ids'],
+            attention_mask=batch['attention_mask']
+        )
+        embeds = outs.last_hidden_state
+        return embeds
+
     def save_ckpt(self):
         curr_step = self.global_step
         save_every = self.config.checkpointing.save_every_n_steps

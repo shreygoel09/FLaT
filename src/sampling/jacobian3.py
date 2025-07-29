@@ -25,20 +25,19 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 mode = "energy"  # energy / score
-prop = "solubility"  # solubility / permeability / stability
+prop = "stability"  # solubility / permeability / stability
 
 
 # -------# Langevin Transport #-------- #
-def langevin_transport(batch, transport_model, mode, eta, eps):
+def langevin_transport(z_t, transport_model, mode, eta, eps):
     """ Function to perform 1 step of latent Langevin transport """
-    z_t, mask = batch['latent'], batch['attention_mask']
     noise = math.sqrt(2 * eps) * torch.randn_like(z_t, device=z_t.device)
     z_t = z_t.clone().detach().requires_grad_(True)
     
     if mode == "energy":
-        energy_vector = transport_model(batch={'embeds': z_t, 'attention_mask': mask})
+        energy_vector = transport_model({"embeds": z_t})
         _print(f'energy: {energy_vector}')
-        energy_vector.squeeze().backward()  # energy is already scalar
+        energy_vector.backward()  # energy is already scalar
         z_t = z_t - (eta * z_t.grad) + noise
     
     elif mode == "score":
@@ -48,72 +47,82 @@ def langevin_transport(batch, transport_model, mode, eta, eps):
         _print(f'score: {s_theta}')
         z_t = z_t + (eta * s_theta) + noise
 
-    # Update dictionary for next step
-    batch['latent'] = z_t
     _print(f'zt: {z_t}')
     return z_t.detach()
 
 
+
 # -------# Jacobian Decoding #-------- #
-def jacobian_decoding(x_k, classifier, x_0, z_T, z_0, mask, encoder_lm, eta, gamma, tau):
-    x_k = x_k.clone().requires_grad_(True)
-
-    # Project logits to latent space with inverse decoder weight
-    W_T = encoder_lm.lm_head.decoder.weight.T  # D, V
-    W_pinv = torch.linalg.pinv(W_T)  # V, D
-    embeds = x_k @ W_pinv  # L, D (Remove BOS / EOS)
-    _print(f'embed decoder proj: {embeds}')
+def jacobian_decoding(x_k, classifier, optim_latent, encoder_lm, eta, gamma, tau=1.0):
+    """
+    Function to perform 1 step of vector-jacobian product decoding.
     
-    # _print(f'xk shape: {x_k.shape}')
-    # x_soft = F.softmax(x_k / tau, dim=-1)  # [L, V]
-    # embedding_matrix = encoder_lm.get_input_embeddings().weight  # [V, D]
-    # embeds = x_soft @ embedding_matrix  # [L, D]
-    # _print(f'embeds soft: {embeds}')
+    Args:
+        - x_k (torch.Tensor): sequence logits [L, V]
+        - z_target (torch.Tensor): langevin-transported latent (D)
+        - encoder (PreTrainedModel): pre-trained encoder model. Must have get_input_embeddings() fn
+        - eta: learning rate / update step size
+    Return:
+        - x_prime (torch.Tensor): optimzed  
+    """
+    x_k = x_k.detach().clone().requires_grad_(True)
+    x_flat = x_k.view(-1)
+    _print(f'x_k: {x_k}')
+    _print(f'x flat: {x_flat}')
 
-    # Residual to use in vector-Jacobian product of relaxed logits wrt latent
-    # (d_pi(x) / dx) * (pi(x)) - z')
-    pi_x = embeds[1:-1, :] # Remove bos/eos dimensions
-    sim = (F.cosine_similarity(z_0.mean(dim=-1), z_T.mean(dim=-1)) + 1) / 2
-    z_T = sim * z_T + (1 - sim) * z_0
-    residual = pi_x - z_T
-    latent_loss = 0.5 * torch.sum(residual ** 2) / residual.numel()  # Normalize
-    _print(f'latent loss: {latent_loss}')
+    # Create embeddings from logits
+    def relax_fn(x_flat):
+        # Gumbel-softmax relaxation
+        x = x_flat.view(x_k.shape) # L, V
+        gumbel_noise = -torch.log(-torch.log(torch.rand_like(x) + 1e-8) + 1e-8)
+        x = (x + gumbel_noise) / tau
 
-    # # Classifier gradients
-    pred = classifier(batch={'embeds': pi_x.unsqueeze(0), 'attention_mask': mask})
-    _print(f'pred: {pred}')
+        W_T = encoder_lm.lm_head.decoder.weight.T  # D, V
+        W_pinv = torch.linalg.pinv(W_T)  # V, D
+        embeds = x @ W_pinv  # L, D
+        return embeds.mean(dim=0).unsqueeze(0)  # 1, D
+
+        # probs = x.softmax(dim=-1).unsqueeze(0) # 1, L, V
+        # embed_weight = encoder.get_input_embeddings().weight
+        # word_embeds = torch.matmul(probs, embed_weight) # 1, L, D
+        # embeds = encoder(inputs_embeds=word_embeds, output_hidden_states=True).hidden_states[-1]
+        # return embeds.sum(dim=1)  # 1, D
+
+    # Sequence relaxation
+    pi_x = relax_fn(x_flat)
+    _print(f'embeds: {pi_x}, {pi_x.shape}')
+    
+    # Compute residual vector
+    residual = pi_x - optim_latent
+
+    # Vector-Jacobian product of relaxed logits wrt latent, (d_pi(x) / dx) * (pi(x)) - z')
+    latent_grad = torch.autograd.grad(
+        outputs=pi_x,
+        inputs=x_flat,
+        grad_outputs=residual, # Vector is the residuals
+        retain_graph=True
+    )[0]
+
+    # Classifier gradients
+    pred = classifier({'embeds': pi_x})
     if mode == "energy":
-        if prop == "solubility":
-            #value_loss = -pred
-            value_loss = F.binary_cross_entropy_with_logits(pred, torch.ones_like(pred))
-        else:
-            value_loss = -pred
+        value_loss = F.binary_cross_entropy_with_logits(pred, torch.ones_like(pred))
+        if prop == "stability":
+            value_loss = -value_loss
     elif mode == "score":
-        z_t, _, _ = pred
-        value_loss = F.mse_loss(z_t, z_T)
-    _print(f'value loss: {value_loss}')
-
-    kl_div = F.kl_div(
-        input=F.log_softmax(x_0.detach(), dim=-1),
-        target=F.log_softmax(x_k, dim=-1),
-        log_target=True,
-        reduction='batchmean'
-    )
-    _print(f'kl div: {kl_div}')
+        curr_latent, _, _ = pred
+        value_loss = F.mse_loss(curr_latent, optim_latent)
+        _print(f'value loss: {value_loss}')
+    value_grad =  torch.autograd.grad(value_loss, x_flat, retain_graph=True)[0]
 
     # Update step
-    #grad = latent_grad
-    #grad = latent_grad + kl_grad
-    #grad = latent_grad + value_grad
-
-    #loss = latent_loss + value_loss - kl_div
-    #loss = latent_loss + value_loss + kl_div # Latent loss is already negated
-    loss = latent_loss
-    grad = torch.autograd.grad(loss, x_k)[0].clamp(min=-1, max=1)
-    _print(f'grad: {grad}')
-
-    x_k_prime = x_k - (eta * grad)
-    return x_k_prime.detach()
+    grad = latent_grad + value_grad
+    _print(f'latent grad: {latent_grad}')
+    _print(f'value grad: {value_grad}')
+    _print(f'total grad: {grad}')
+    x_k_prime = x_flat - (eta * latent_grad)
+    logits = x_k_prime.view(x_k.shape).detach() # L, V
+    return logits
 
 
 
@@ -134,19 +143,14 @@ def main():
     hammings = []
 
     for seq in tqdm(seqs, desc="Optimizing sequences"):
-
-        mask = torch.ones(1, len(seq)).to(device)
         
         # Perform langevin transport on the initial vector of gaussian noise
-        batch = {
-            'latent': torch.randn(1, len(seq), config.model.d_model).to(device),
-            'attention_mask': mask
-        }
+        latent = torch.randn(1, config.model.d_model).to(device)
         langevin_lr = torch.tensor(config.sampling.langevin.lr, device=device, dtype=torch.float32)
         langevin_eps = torch.tensor(config.sampling.langevin.noise_eps, device=device, dtype=torch.float32)
         for _ in range(config.sampling.langevin.steps):
             latent = langevin_transport(
-                batch=batch,
+                z_t=latent,
                 transport_model=transport_model,
                 mode=mode,
                 eta=langevin_lr,
@@ -154,23 +158,17 @@ def main():
             )
         
         # Compute and optimize sequence logits
-        og_latent = get_embeds(tokenizer(seq, return_tensors='pt'), encoder_model).squeeze(0)[1:-1, :]
-        _print(f'og lat: {og_latent.shape}')
+        og_embeds = get_embeds(tokenizer(seq, return_tensors='pt'), encoder_model)
         logits = get_logits(tokenizer(seq, return_tensors='pt'), encoder_lm_model)
-        og_logits = logits.detach().clone()
         decoder_lr = torch.tensor(config.sampling.decoding.lr, device=device, dtype=torch.float32)
         for _ in range(config.sampling.decoding.steps):
             logits = jacobian_decoding(
                 x_k=logits,
                 classifier=transport_model,
-                x_0=og_logits,
-                z_T=latent,
-                z_0=og_latent,
-                mask=mask,
+                optim_latent=latent,
                 encoder_lm=encoder_lm_model,
                 eta=decoder_lr,
-                gamma=config.sampling.decoding.gamma,
-                tau=(1/math.log(len(seq))),
+                gamma=config.sampling.decoding.gamma
             )
 
         # Sample tokens from categoricals
@@ -203,7 +201,7 @@ def main():
     seq_data['Optim Vals'] = optim_vals
     seq_data['entropy'] = entropies
     
-    save_path = f'./results/optim/{mode}/{prop}/{todays_date}/transformer_optim_seqs.csv'
+    save_path = f'./results/optim/{mode}/{prop}/gamma=10_{todays_date}_optim_seqs.csv'
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     seq_data.to_csv(save_path, index=False)
 
@@ -212,81 +210,6 @@ if __name__ == "__main__":
     main()
 
 
-
-
-
-# # -------# Jacobian Decoding #-------- #
-# def jacobian_decoding(x_k, classifier, optim_latent, encoder_lm, eta, gamma, tau=1.0):
-#     """
-#     Function to perform 1 step of vector-jacobian product decoding.
-    
-#     Args:
-#         - x_k (torch.Tensor): sequence logits [L, V]
-#         - z_target (torch.Tensor): langevin-transported latent (D)
-#         - encoder (PreTrainedModel): pre-trained encoder model. Must have get_input_embeddings() fn
-#         - eta: learning rate / update step size
-#     Return:
-#         - x_prime (torch.Tensor): optimzed  
-#     """
-#     x_k = x_k.detach().clone().requires_grad_(True)
-#     x_flat = x_k.view(-1)
-#     _print(f'x_k: {x_k}')
-#     _print(f'x flat: {x_flat}')
-
-#     # Create embeddings from logits
-#     def relax_fn(x_flat):
-#         # Gumbel-softmax relaxation
-#         x = x_flat.view(x_k.shape) # L, V
-#         gumbel_noise = -torch.log(-torch.log(torch.rand_like(x) + 1e-8) + 1e-8)
-#         x = (x + gumbel_noise) / tau
-
-#         W_T = encoder_lm.lm_head.decoder.weight.T  # D, V
-#         W_pinv = torch.linalg.pinv(W_T)  # V, D
-#         embeds = x @ W_pinv  # L, D
-#         return embeds
-#         #return embeds.mean(dim=0).unsqueeze(0)  # 1, D
-
-#         # probs = x.softmax(dim=-1).unsqueeze(0) # 1, L, V
-#         # embed_weight = encoder.get_input_embeddings().weight
-#         # word_embeds = torch.matmul(probs, embed_weight) # 1, L, D
-#         # embeds = encoder(inputs_embeds=word_embeds, output_hidden_states=True).hidden_states[-1]
-#         # return embeds.sum(dim=1)  # 1, D
-
-#     # Sequence relaxation
-#     pi_x = relax_fn(x_flat)[1:-1, :] # Remove BOS / EOS positions
-#     _print(f'embeds: {pi_x}, {pi_x.shape}')
-    
-#     # Compute residual vector
-#     residual = pi_x - optim_latent
-
-#     # Vector-Jacobian product of relaxed logits wrt latent, (d_pi(x) / dx) * (pi(x)) - z')
-#     latent_grad = torch.autograd.grad(
-#         outputs=pi_x,
-#         inputs=x_flat,
-#         grad_outputs=residual, # Vector is the residuals
-#         retain_graph=True
-#     )[0]
-
-#     # Classifier gradients
-#     pred = classifier({'embeds': pi_x})
-#     if mode == "energy":
-#         value_loss = -F.binary_cross_entropy_with_logits(pred, torch.ones_like(pred))
-#         if prop == "stability":
-#             value_loss = value_loss
-#     elif mode == "score":
-#         curr_latent, _, _ = pred
-#         value_loss = F.mse_loss(curr_latent, optim_latent)
-#         _print(f'value loss: {value_loss}')
-#     value_grad =  torch.autograd.grad(value_loss, x_flat, retain_graph=True)[0]
-
-#     # Update step
-#     grad = latent_grad + value_grad
-#     _print(f'latent grad: {latent_grad}')
-#     _print(f'value grad: {value_grad}')
-#     _print(f'total grad: {grad}')
-#     x_k_prime = x_flat - (eta * latent_grad)
-#     logits = x_k_prime.view(x_k.shape).detach() # L, V
-#     return logits
 
 
 

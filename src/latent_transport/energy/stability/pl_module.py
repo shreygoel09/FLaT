@@ -35,18 +35,8 @@ class TransportModule(pl.LightningModule):
             embeddings = self.compute_embedding(batch)
         else:
             embeddings = batch['embeds']
-
-        if embeddings.ndim == 3:
-            # Mean pooling ignoring pad tokens
-            pooled = mean_pool(embeds=embeddings, attention_mask=batch['attention_mask'])
-        elif embeddings.ndim == 1:
-            # Latents with correct dims are provided during langevin transport
-            # Only need to introduce a batch dimension
-            pooled = embeddings.unsqueeze(0)
-        else:
-            raise ValueError(f"Incorrect embedding dim of {embeddings.ndim} provided")
         
-        logits = self.model(pooled)
+        logits = self.model(esm_embeds=embeddings, batch=batch)
         return logits
 
     

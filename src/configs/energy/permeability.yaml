@@ -35,12 +35,13 @@ training:
 
 sampling:
   langevin:
-    steps:
-    noise_eps:
-    lr:
+    steps: 64
+    noise_eps: 1e-3
+    lr: 0.01
   decoding:
-    steps:
-    lr:
+    steps: 64
+    gamma: 2
+    lr: 0.01
   
 
 data:

@@ -9,59 +9,62 @@ lm:
 
 
 model:
-  d_model: 1280
+  d_model: 1280 
+  num_heads: 4
+  dropout: 0.2
+  num_layers: 2
 
 optim:
   type: adamw
   lr: 1e-4
-  lr_end: 1e-5
+  lr_end: 1e-6
   weight_decay: 0.01
   beta1: 0.9
   beta2: 0.98
   power: 1
-  sigma: 1.0
 
 
 training:
-  mode: test  # train / test
+  mode: train  # train / test / resume
   n_layers: 4
-  max_steps: 30000
-  warmup_steps: 1500
+  max_steps: 50000
+  warmup_steps: 5000
   log_every_n_steps: 10
   num_sanity_val_steps: 2
-  val_check_interval: 400
+  val_check_interval: 977
   enable_progress_bar: true
   grad_clip_val: 1.0
+  accum_grad_batches: 4
   devices: [0]  # list of GPU IDs from 0-7
 
 sampling:
   langevin:
-    steps: 128
+    steps: 64
     noise_eps: 2e-3
-    lr: 0.04
+    lr: 1 #0.1 #0.01
   decoding:
     steps: 64
-    lr: 0.01
-    gamma: 20
+    gamma: 15
+    lr: 1
   
 
 data:
-  batch_size: 32
+  batch_size: 64
   max_seq_len: 1024
-  train: ${base_dir}/data/solubility/score/train.csv
-  test: ${base_dir}/data/solubility/score/test.csv
-  val: ${base_dir}/data/solubility/score/val.csv
+  train: ${base_dir}/data/solubility/energy/train.csv
+  test: ${base_dir}/data/solubility/energy/test.csv
+  val: ${base_dir}/data/solubility/energy/val.csv
 
 
 wandb:
   project: flat_solubility_v2
   group: programmablebio
-  name: score_sol_simple-mlp_steps30k_lr1e-4_bsz32_drpt0.5_betas0.99-0.98
+  name: sol_energy_transformer_new_mlp_steps50k_lr1e-4-1e-6_bsz64_layers2_heads4_drpt0.2_grad-bsz4_betas0.99-0.98 
   id: ${.name}_${seed}
 
 
 checkpointing:
-  save_every_n_steps: 1500
-  save_dir: ${base_dir}/checkpoints/score/${wandb.name}
+  save_every_n_steps: 2000
+  save_dir: ${base_dir}/checkpoints/energy/${wandb.name}
   resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt

@@ -8,13 +8,15 @@ lm:
   pretrained_esm: facebook/esm2_t33_650M_UR50D
 
 model:
-  d_model: 1280
-  dropout: 0.5
+  d_model: 1280 
+  num_heads: 2
+  dropout: 0.2
+  num_layers: 4
 
 optim:
   type: adamw
-  lr: 1e-4
-  lr_end: 1e-5
+  lr: 2e-5
+  lr_end: 1e-6
   weight_decay: 0.01
   beta1: 0.9
   beta2: 0.98
@@ -24,9 +26,9 @@ optim:
 training:
   mode: resume  # train / test / resume
   n_layers: 4
-  max_steps: 30000
-  warmup_steps: 1500
-  log_every_n_steps: 5
+  max_steps: 50000
+  warmup_steps: 5000
+  log_every_n_steps: 10
   num_sanity_val_steps: 2
   val_check_interval: 24
   enable_progress_bar: true
@@ -36,12 +38,13 @@ training:
 
 sampling:
   langevin:
-    steps:
-    noise_eps:
-    lr:
+    steps: 64
+    noise_eps: 1e-3
+    lr: 0.01
   decoding:
-    steps:
-    lr:
+    steps: 64
+    gamma: 10
+    lr: 0.01
   
 
 data:
@@ -53,14 +56,14 @@ data:
 
 
 wandb:
-  project: flat_stability
+  project: flat_stability_v2
   group: programmablebio
-  name: redo_energy_stable_deep-mlp_steps30k_lr1e-4_bsz64_gradbtches2_betas0.99-0.98
+  name: unnormed_stable_energy_transformer_steps50k_lr2e-5-1e-6_bsz64_layers4_heads2_drpt0.2_betas0.99-0.98 
   id: ${.name}_${seed}
 
 
 checkpointing:
   save_every_n_steps: 2000
   save_dir: ${base_dir}/checkpoints/energy/${wandb.name}
-  resume_ckpt_path: ${checkpointing.save_dir}/step=14160.ckpt
+  resume_ckpt_path: ${checkpointing.save_dir}/step=10000.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt

@@ -1,11 +1,37 @@
-# .gitignore
+# # .gitignore
 
-/checkpoints/
-/data/
+# /checkpoints/
+# /data/
+# /results/
+# /build/
+# /src/scripts/
+# /FLaT.egg-info/
+# *.pth
+# *.ckpt
+# __pycache__/
+
+
+# HF gitignore
+# Ignore most of checkpoints and data
+/checkpoints/*
+/data/*
 /results/
 /build/
 /src/scripts/
 /FLaT.egg-info/
 *.pth
-*.ckpt
 __pycache__/
+
+# Allow only this model checkpoint
+#!checkpoints/energy/
+#!checkpoints/energy/sol_energy_transformer_steps50k_lr2e-5-1e-6_bsz64_layers2_heads2_drpt0.5_grad-bsz4_betas0.99-0.98/
+!checkpoints/energy/sol_energy_transformer_steps50k_lr2e-5-1e-6_bsz64_layers2_heads2_drpt0.5_grad-bsz4_betas0.99-0.98/best_model.ckpt
+
+# Allow this data file
+#!data/solubility/
+!data/solubility/seqs_for_optim.csv
+
+# Always track these
+!src/
+!utils/
+!README.md

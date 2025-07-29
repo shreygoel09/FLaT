@@ -16,7 +16,7 @@ from src.latent_transport.energy.solubility.pl_module import TransportModule
 from src.latent_transport.energy.solubility.dataloader import CustomDataset, CustomDataModule
 
 
-config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/sol.yaml")
+config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/solubility.yaml")
 
 
 # -------- Model Loader -------- #

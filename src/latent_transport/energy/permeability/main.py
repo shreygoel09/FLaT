@@ -14,7 +14,7 @@ from src.latent_transport.energy.permeability.pl_module import TransportModule
 from src.latent_transport.energy.permeability.dataloader import CustomDataset, CustomDataModule
 from src.latent_transport.energy.permeability.tokenizer import SMILES_SPE_Tokenizer
 
-config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/perm.yaml")
+config = OmegaConf.load(f"/home/a03-sgoel/FLaT/src/configs/energy/permeability.yaml")
 
 
 # -------- Model Loader -------- #

@@ -7,9 +7,11 @@ base_dir: /home/a03-sgoel/FLaT
 lm:
   pretrained_esm: facebook/esm2_t33_650M_UR50D
 
-
 model:
   d_model: 1280 
+  num_heads: 2
+  dropout: 0.5
+  num_layers: 4
 
 optim:
   type: adamw
@@ -24,11 +26,11 @@ optim:
 training:
   mode: resume  # train / test / resume
   n_layers: 4
-  max_steps: 60000
-  warmup_steps: 3000
+  max_steps: 50000
+  warmup_steps: 5000
   log_every_n_steps: 10
   num_sanity_val_steps: 2
-  val_check_interval: 977
+  val_check_interval: 24
   enable_progress_bar: true
   grad_clip_val: 1.0
   accum_grad_batches: 2
@@ -36,31 +38,32 @@ training:
 
 sampling:
   langevin:
-    steps:
-    noise_eps:
-    lr:
+    steps: 64
+    noise_eps: 1e-3
+    lr: 0.01
   decoding:
-    steps:
-    lr:
+    steps: 64
+    gamma: 10
+    lr: 0.01
   
 
 data:
   batch_size: 64
   max_seq_len: 1024
-  train: ${base_dir}/data/solubility/energy/train.csv
-  test: ${base_dir}/data/solubility/energy/test.csv
-  val: ${base_dir}/data/solubility/energy/val.csv
+  train: ${base_dir}/data/stability/energy/train.csv
+  test: ${base_dir}/data/stability/energy/test.csv
+  val: ${base_dir}/data/stability/energy/val.csv
 
 
 wandb:
-  project: flat_solubility_v2
+  project: flat_stability_v2
   group: programmablebio
-  name: redo_energy_sol_simple-mlp_steps60k_lr3e-5_bsz64_accum-grad-btch2_drpt0.5_betas0.99-0.98
+  name: unnormed_stable_energy_transformer_steps50k_lr3e-5_bsz64_layers4_heads2_drpt0.5_betas0.99-0.98 
   id: ${.name}_${seed}
 
 
 checkpointing:
   save_every_n_steps: 2000
   save_dir: ${base_dir}/checkpoints/energy/${wandb.name}
-  resume_ckpt_path: ${checkpointing.save_dir}/last.ckpt
+  resume_ckpt_path: ${checkpointing.save_dir}/step=34000.ckpt
   best_ckpt_path: ${checkpointing.save_dir}/best_model.ckpt
