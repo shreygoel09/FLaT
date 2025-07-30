@@ -15,4 +15,4 @@ pip install -r requirements.txt
 
 
 ### 3. Run the jacobian sampling using the .sh file here:
-src/scripts/run_jacobian2.sh -f
+src/scripts/run_jacobian2.sh
