@@ -5,12 +5,12 @@ This repository contains the code for **FLaT** (Functional Langevin Transport), 
 
 
 ### 1. Clone the repo
-git clone https://huggingface.co/ChatterjeeLab/FLaT
+git clone https://huggingface.co/ChatterjeeLab/FLaT  
 cd FLaT
 
 ### 2. Create the conda environment
-conda create -n flat
-conda activate flat
+conda create -n flat  
+conda activate flat  
 pip install -r requirements.txt
 
 
