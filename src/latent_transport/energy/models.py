@@ -17,20 +17,20 @@ class SolubilityClassifier(nn.Module):
         self.encoder = nn.TransformerEncoder(encoder_layer, config.model.num_layers)
         self.layer_norm = nn.LayerNorm(config.model.d_model)
         self.dropout = nn.Dropout(config.model.dropout)
-        # self.mlp = nn.Sequential(
-        #     nn.Linear(config.model.d_model, config.model.d_model // 2),
-        #     nn.LayerNorm(config.model.d_model // 2),
-        #     nn.ReLU(),
-        #     nn.Dropout(config.model.dropout),
-        #     nn.Linear(config.model.d_model // 2, 1),
-        # )
-
         self.mlp = nn.Sequential(
             nn.Linear(config.model.d_model, config.model.d_model // 2),
+            nn.LayerNorm(config.model.d_model // 2),
             nn.ReLU(),
             nn.Dropout(config.model.dropout),
             nn.Linear(config.model.d_model // 2, 1),
         )
+
+        # self.mlp = nn.Sequential(
+        #     nn.Linear(config.model.d_model, config.model.d_model // 2),
+        #     nn.ReLU(),
+        #     nn.Dropout(config.model.dropout),
+        #     nn.Linear(config.model.d_model // 2, 1),
+        # )
 
     def forward(self, esm_embeds, batch):
         encodings = self.encoder(esm_embeds, src_key_padding_mask=(batch['attention_mask'] == 0))

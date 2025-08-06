@@ -39,7 +39,7 @@ def langevin_transport(batch, transport_model, mode, eta, eps):
         energy_vector = transport_model(batch={'embeds': z_t, 'attention_mask': mask})
         _print(f'energy: {energy_vector}')
         energy_vector.squeeze().backward()  # energy is already scalar
-        z_t = z_t - (eta * z_t.grad) + noise
+        z_t = z_t - (eta * z_t.grad) #+ noise
     
     elif mode == "score":
         with torch.no_grad():
@@ -76,6 +76,7 @@ def jacobian_decoding(x_k, classifier, x_0, z_T, z_0, mask, encoder_lm, eta, gam
     sim = (F.cosine_similarity(z_0.mean(dim=-1), z_T.mean(dim=-1)) + 1) / 2
     z_T = sim * z_T + (1 - sim) * z_0
     residual = pi_x - z_T
+    _print(f'residual: {residual}')
     latent_loss = 0.5 * torch.sum(residual ** 2) / residual.numel()  # Normalize
     _print(f'latent loss: {latent_loss}')
 
@@ -113,7 +114,7 @@ def jacobian_decoding(x_k, classifier, x_0, z_T, z_0, mask, encoder_lm, eta, gam
     _print(f'grad: {grad}')
 
     x_k_prime = x_k - (eta * grad)
-    return x_k_prime.detach()
+    return x_k_prime
 
 
 
@@ -153,9 +154,11 @@ def main():
                 eps=langevin_eps
             )
         
+        og_val = transport_model(batch={"embeds": latent, 'attention_mask': mask})
+        _print(f'pred of z_T: {torch.sigmoid(og_val)}')
+        
         # Compute and optimize sequence logits
         og_latent = get_embeds(tokenizer(seq, return_tensors='pt'), encoder_model).squeeze(0)[1:-1, :]
-        _print(f'og lat: {og_latent.shape}')
         logits = get_logits(tokenizer(seq, return_tensors='pt'), encoder_lm_model)
         og_logits = logits.detach().clone()
         decoder_lr = torch.tensor(config.sampling.decoding.lr, device=device, dtype=torch.float32)
@@ -191,10 +194,10 @@ def main():
             optim_vals.append(float('inf'))
             entropies.append(float('inf'))
 
-        _print(f'ppls:       {perplexities}')
-        _print(f'og vals:    {og_vals}')
-        _print(f'optim vals: {optim_vals}')
-        _print(f'entropy:    {entropies}')
+        _print(f'ppls:       {perplexities[-1]}')
+        _print(f'og vals:    {og_vals[-1]}')
+        _print(f'optim vals: {optim_vals[-1]}')
+        _print(f'entropy:    {entropies[-1]}')
         _print('\n')
 
     # Save results

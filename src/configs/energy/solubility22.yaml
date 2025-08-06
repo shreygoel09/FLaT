@@ -10,13 +10,13 @@ lm:
 
 model:
   d_model: 1280 
-  num_heads: 4
-  dropout: 0.2
+  num_heads: 2
+  dropout: 0.5
   num_layers: 2
 
 optim:
   type: adamw
-  lr: 1e-4
+  lr: 2e-5
   lr_end: 1e-6
   weight_decay: 0.01
   beta1: 0.9
@@ -25,7 +25,7 @@ optim:
 
 
 training:
-  mode: train  # train / test / resume
+  mode: test  # train / test / resume
   n_layers: 4
   max_steps: 50000
   warmup_steps: 5000
@@ -39,13 +39,13 @@ training:
 
 sampling:
   langevin:
-    steps: 64
+    steps: 128
     noise_eps: 2e-3
-    lr: 1 #0.1 #0.01
+    lr: 1 #0.01
   decoding:
-    steps: 64
-    gamma: 15
-    lr: 1
+    steps: 256
+    gamma: 1
+    lr: 0.05 #0.01
   
 
 data:
@@ -59,7 +59,7 @@ data:
 wandb:
   project: flat_solubility_v2
   group: programmablebio
-  name: sol_energy_transformer_new_mlp_steps50k_lr1e-4-1e-6_bsz64_layers2_heads4_drpt0.2_grad-bsz4_betas0.99-0.98 
+  name: sol_energy_transformer_steps50k_lr2e-5-1e-6_bsz64_layers2_heads2_drpt0.5_grad-bsz4_betas0.99-0.98 
   id: ${.name}_${seed}
 
 
