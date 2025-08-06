@@ -1,6 +1,6 @@
 # FLaT: Functional Langevin Transport
 
-This repository contains the code for **FLaT** (Functional Langevin Transport), a framework for goal-directed biological sequence generation via latent Langevin transport and Jacobian-informed decoding.
+This repository contains the code for **FLaT** (Functional Langevin Transport), a framework for goal-directed biological sequence generation via latent Langevin transport and Jacobian-informed decoding (pre-print and repo WIP).
 
 
 
